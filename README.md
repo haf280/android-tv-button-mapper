@@ -28,9 +28,11 @@ You need a computer with [adb](https://developer.android.com/tools/releases/plat
    adb connect <TV_IP>:5555      # the TV asks "Allow debugging?": tick Always allow, press Allow
    adb install tv-recents.apk
    ```
-4. **On the TV, open Recents** from your apps. It takes you to **Usage access**: turn on **Recents**.
-5. **Turn on the shortcut:** Settings → Accessibility → **Recents: hold Home and Force stop** → On.
-   Android warns that it can control the screen. That's what lets it press Force stop for you.
+4. **On the TV, open Recents** from your apps. A short setup walks you through two switches, each
+   one press away, and comes back by itself once you've switched it on:
+   - **Usage access** → turn on **Recents**.
+   - **Accessibility** → **Recents: hold Home and Force stop** → On. Android warns that it can control
+     the screen. That's what lets it press Force stop for you.
 
 Installing with `adb` matters: on Android 13 and later, apps installed from a browser or file manager
 can't turn on accessibility until you allow "restricted settings" in their App info.

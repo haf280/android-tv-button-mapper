@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.nilava.tvrecents" android:versionCode="1" android:versionName="1.0.0">
+    package="io.github.nilava.tvrecents" android:versionCode="2" android:versionName="1.0.0">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
     <!-- Which apps you used recently. You allow it once in Settings > Apps > Special app access > Usage access. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
@@ -38,6 +38,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".SetupActivity"
+            android:exported="false" android:launchMode="singleTask"
+            android:excludeFromRecents="true" android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
         <!-- Optional. You turn it on in Settings > Accessibility. -->
         <service android:name=".RecentsService" android:label="@string/service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">

@@ -17,9 +17,8 @@ import java.util.List;
 public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
-        if (!AppList.hasUsageAccess(this)) {
-            Toast.makeText(this, "Allow Usage access for Recents, then open it again", Toast.LENGTH_LONG).show();
-            open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
+        if (!SetupActivity.complete(this)) {          // first run, or a switch was turned off
+            startActivity(new Intent(this, SetupActivity.class));
             finish();
             return;
         }

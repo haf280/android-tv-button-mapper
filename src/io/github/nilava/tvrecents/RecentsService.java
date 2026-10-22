@@ -45,6 +45,11 @@ public class RecentsService extends AccessibilityService {
         instance = this;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         ui = new Panel(this);
+        // Just switched on from setup: go back to it, so it can say "All set".
+        if (SetupActivity.waiting) {
+            startActivity(new Intent(this, SetupActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
+        }
     }
 
     @Override public boolean onUnbind(Intent i) {
