@@ -1,0 +1,5 @@
+out/
+# The signing key. Never commit it: whoever has it can publish updates as you. Back it up somewhere safe.
+*.jks
+*.keystore
+.DS_Store
