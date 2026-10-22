@@ -1,8 +1,6 @@
 package io.github.nilava.tvrecents;
 
 import android.app.ActivityManager;
-import android.app.usage.UsageEvents;
-import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,16 +12,17 @@ import android.os.SystemClock;
 import android.provider.Settings;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
- * Which apps to show. Android 14 doesn't tell normal apps what's running, so this shows apps
- * you opened since the TV started, minus the ones closed here since you last opened them.
+ * Which apps to show: the ones you opened since the TV started, most recent first, minus the ones
+ * closed here since you last opened them. The Recents service writes this list itself as apps come
+ * to the screen. It's timed with the TV's uptime, not its clock, so a clock that jumps (a TV that
+ * starts with the wrong date and fixes it later) can't empty it. Android's own usage log can.
  */
 final class AppList {
     static final class Item {
@@ -31,8 +30,7 @@ final class AppList {
     }
 
     static final String PREFS = "recents";
-
-    static long bootTime() { return System.currentTimeMillis() - SystemClock.elapsedRealtime(); }
+    static final int KEEP = 30;
 
     static Set<String> homes(PackageManager pm) {
         Set<String> s = new HashSet<>();
@@ -41,41 +39,58 @@ final class AppList {
         return s;
     }
 
+    /** Changes every time the TV starts, so the list starts empty after a restart. */
+    static int bootCount(Context c) {
+        return Settings.Global.getInt(c.getContentResolver(), Settings.Global.BOOT_COUNT, 0);
+    }
+
+    /** The saved list, cleared if it's from before this start. */
+    static SharedPreferences history(Context c) {
+        SharedPreferences p = c.getSharedPreferences(PREFS, 0);
+        int boot = bootCount(c);
+        if (p.getInt("boot", -1) != boot) p.edit().clear().putInt("boot", boot).apply();
+        return p;
+    }
+
+    static List<String> order(SharedPreferences p) {
+        String s = p.getString("order", "");
+        return s.isEmpty() ? new ArrayList<>() : new ArrayList<>(Arrays.asList(s.split(",")));
+    }
+
+    /** An app came to the screen. */
+    static void opened(Context c, String pkg) {
+        SharedPreferences p = history(c);
+        List<String> o = order(p);
+        o.remove(pkg);
+        o.add(0, pkg);
+        while (o.size() > KEEP) o.remove(o.size() - 1);
+        p.edit().putString("order", String.join(",", o)).putLong("t:" + pkg, SystemClock.elapsedRealtime()).apply();
+    }
+
     /** Most recent first. */
     static List<Item> load(Context c, int max) {
         PackageManager pm = c.getPackageManager();
         Set<String> skip = homes(pm);
         skip.add(c.getPackageName());
-        SharedPreferences prefs = c.getSharedPreferences(PREFS, 0);
-
-        long now = System.currentTimeMillis();
-        Map<String, Long> last = new HashMap<>();
-        UsageStatsManager usm = (UsageStatsManager) c.getSystemService(Context.USAGE_STATS_SERVICE);
-        UsageEvents ev = usm.queryEvents(bootTime(), now);
-        UsageEvents.Event e = new UsageEvents.Event();
-        while (ev.hasNextEvent()) {
-            ev.getNextEvent(e);
-            if (e.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND && !skip.contains(e.getPackageName()))
-                last.put(e.getPackageName(), e.getTimeStamp());
-        }
-        List<Map.Entry<String, Long>> order = new ArrayList<>(last.entrySet());
-        order.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+        SharedPreferences prefs = history(c);
+        long up = SystemClock.elapsedRealtime(), now = System.currentTimeMillis();
 
         List<Item> out = new ArrayList<>();
-        for (Map.Entry<String, Long> en : order) {
+        for (String pkg : order(prefs)) {
             if (out.size() >= max) break;
-            if (en.getValue() <= prefs.getLong("closed:" + en.getKey(), 0)) continue; // closed since
+            long t = prefs.getLong("t:" + pkg, 0);
+            if (skip.contains(pkg) || t <= prefs.getLong("closed:" + pkg, 0)) continue; // closed since
             Item it = new Item();
-            it.pkg = en.getKey();
-            it.used = en.getValue();
-            it.launch = pm.getLeanbackLaunchIntentForPackage(it.pkg);
-            if (it.launch == null) it.launch = pm.getLaunchIntentForPackage(it.pkg);
-            if (it.launch == null) continue; // not something you can open
+            it.pkg = pkg;
+            it.used = now - (up - t);
+            it.launch = pm.getLeanbackLaunchIntentForPackage(pkg);
+            if (it.launch == null) it.launch = pm.getLaunchIntentForPackage(pkg);
+            if (it.launch == null) continue; // uninstalled, or not something you can open
             try {
-                it.label = pm.getApplicationLabel(pm.getApplicationInfo(it.pkg, 0));
-                it.art = pm.getApplicationBanner(it.pkg);
+                it.label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0));
+                it.art = pm.getApplicationBanner(pkg);
                 it.banner = it.art != null;
-                if (it.art == null) it.art = pm.getApplicationIcon(it.pkg);
+                if (it.art == null) it.art = pm.getApplicationIcon(pkg);
             } catch (PackageManager.NameNotFoundException x) { continue; }
             out.add(it);
         }
@@ -83,9 +98,9 @@ final class AppList {
     }
 
     static void markClosed(Context c, Collection<String> pkgs) {
-        SharedPreferences.Editor ed = c.getSharedPreferences(PREFS, 0).edit();
-        long now = System.currentTimeMillis();
-        for (String p : pkgs) ed.putLong("closed:" + p, now);
+        SharedPreferences.Editor ed = history(c).edit();
+        long up = SystemClock.elapsedRealtime();
+        for (String p : pkgs) ed.putLong("closed:" + p, up);
         ed.apply();
     }
 
@@ -130,12 +145,6 @@ final class AppList {
     static boolean isTvMaker(String p) {
         for (String m : TV_MAKERS) if (p.startsWith(m)) return true;
         return false;
-    }
-
-    static boolean hasUsageAccess(Context c) {
-        android.app.AppOpsManager ops = (android.app.AppOpsManager) c.getSystemService(Context.APP_OPS_SERVICE);
-        return ops.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(), c.getPackageName()) == android.app.AppOpsManager.MODE_ALLOWED;
     }
 
     static ActivityManager.MemoryInfo memory(Context c) {

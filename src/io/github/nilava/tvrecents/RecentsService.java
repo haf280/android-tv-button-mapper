@@ -70,7 +70,11 @@ public class RecentsService extends AccessibilityService {
                 && getPackageManager().getLeanbackLaunchIntentForPackage(p) == null
                 && !AppList.homes(getPackageManager()).contains(p)) return; // keyboards, dialogs, overlays
         foreground = AppList.homes(getPackageManager()).contains(p) ? null : p;
+        if (foreground != null && !foreground.equals(lastNoted)) AppList.opened(this, foreground);
+        lastNoted = foreground;
     }
+
+    String lastNoted; // the last app written to the list, so switching windows inside one app doesn't rewrite it
 
     // ---- Remote ----
 

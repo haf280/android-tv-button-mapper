@@ -12,7 +12,7 @@ On a TV with 1–2 GB of RAM, that matters.
 - **Close an app:** press Menu on it. **Close all** closes everything except the app you're in.
 - **Memory:** shows how much is free, and how much each close gave back.
 - **Tiny:** about 5 MB of RAM when idle, one screen of plain Java, no libraries.
-- **Private:** it has no internet permission. Nothing leaves your TV.
+- **Private:** no internet permission, no other permissions. Nothing leaves your TV.
 
 ## Install
 
@@ -28,28 +28,30 @@ You need a computer with [adb](https://developer.android.com/tools/releases/plat
    adb connect <TV_IP>:5555      # the TV asks "Allow debugging?": tick Always allow, press Allow
    adb install tv-recents.apk
    ```
-4. **On the TV, open Recents** from your apps. A short setup walks you through two switches, each
-   one press away, and comes back by itself once you've switched it on:
-   - **Usage access** → turn on **Recents**.
-   - **Accessibility** → **Recents: hold Home and Force stop** → On. Android warns that it can control
-     the screen. That's what lets it press Force stop for you.
+4. **On the TV, open Recents** from your apps. Setup is one switch, one press away: in
+   **Accessibility**, turn on **Recents: hold Home and Force stop**. Android warns that it can see and
+   control the screen; that's what lets it keep the list and press Force stop for you. Setup comes
+   back by itself once it's on.
 
 Installing with `adb` matters: on Android 13 and later, apps installed from a browser or file manager
 can't turn on accessibility until you allow "restricted settings" in their App info.
 
 ## How it works (and why it needs what it needs)
 
-| Permission | Why |
-|---|---|
-| **Usage access** | To know which apps you opened and when. That's the list. |
-| **Accessibility service** | To notice when you hold Home, draw the panel over other apps, and press **Force stop** → **OK** in an app's App info when you ask to close it. |
+Its only permission is the **accessibility service**, which you switch on yourself. It uses it to:
+
+- notice when you hold Home, and draw the panel over other apps,
+- note which app is on screen, to keep the list,
+- press **Force stop** → **OK** in an app's App info when you ask to close it.
 
 Since Android 14, normal apps can't close other apps or see what's running. So:
 
 - **Closing** opens the app's App info page and presses Force stop, then OK, behind a dark
   "Closing apps" screen. It only touches Settings screens it opened itself, only when you ask, and it
   gives up on an app after 4 seconds. Then it returns you to the app you were in.
-- **The list** shows apps you opened since the TV started, minus the ones you closed here.
+- **The list** shows apps you opened since the TV started, minus the ones you closed here. Recents
+  keeps it itself, timed by the TV's uptime rather than its clock, so it still works on TVs whose
+  clock is wrong at startup. (Android's own usage log doesn't: it files everything under the wrong date.)
 
 **Close all never closes** the app you're in, Live TV, Settings, home screens, the keyboard, apps with
 an accessibility service on, or apps from TV and chip makers (Haier, TCL, Sony, Xiaomi, MediaTek and

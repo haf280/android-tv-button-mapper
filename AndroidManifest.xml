@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.nilava.tvrecents" android:versionCode="2" android:versionName="1.0.0">
+    package="io.github.nilava.tvrecents" android:versionCode="3" android:versionName="1.0.0">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
-    <!-- Which apps you used recently. You allow it once in Settings > Apps > Special app access > Usage access. -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <!-- Android 11+ only shows apps that are asked for: TV apps, normal apps and home screens. -->
     <queries>
         <intent>

@@ -1,14 +1,11 @@
 package io.github.nilava.tvrecents;
 
 import android.app.Activity;
-import android.app.AppOpsManager;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -18,8 +15,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 /**
- * First run: two switches, each one press away, with what it's for. Comes back here by itself
- * when a switch is turned on (where Android allows it), and steps aside once both are on.
+ * First run: one switch, one press away, with what it's for. The service brings this screen back
+ * by itself once it's switched on, and it steps aside.
  */
 public class SetupActivity extends Activity {
     /** Set while setup is open, so the service can bring it back when it's switched on. */
@@ -28,19 +25,12 @@ public class SetupActivity extends Activity {
     static final int BG = 0xFF0B0B0D, CARD = 0xFF17171B, WHITE = 0xFFFFFFFF, TEXT2 = 0xB3FFFFFF, TEXT3 = 0x80FFFFFF,
             GOOD = 0xFF8FD19E, CHIP = 0x1FFFFFFF;
 
-    final Handler h = new Handler(Looper.getMainLooper());
     final Typeface medium = Typeface.create("sans-serif-medium", Typeface.NORMAL);
-    Step usage, shortcut;
-    LinearLayout steps, done;
-    TextView doneButton;
-    AppOpsManager ops;
+    Step shortcut;
+    LinearLayout done;
+    TextView hint, doneButton;
 
-    final AppOpsManager.OnOpChangedListener onUsageChanged = (op, pkg) -> {
-        if (!getPackageName().equals(pkg)) return;
-        h.post(() -> {
-            if (AppList.hasUsageAccess(this)) comeBack();
-        });
-    };
+    static boolean complete() { return RecentsService.instance != null; }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -53,28 +43,22 @@ public class SetupActivity extends Activity {
         TextView title = text("Set up Recents", 28, WHITE);
         title.setTypeface(medium);
         col.addView(title);
-        TextView sub = text("Two switches and you’re done. Recents never connects to the internet.", 15, TEXT2);
+        TextView sub = text("One switch and you’re done. Recents never connects to the internet.", 15, TEXT2);
         sub.setPadding(0, dp(10), 0, dp(26));
         col.addView(sub);
 
-        steps = new LinearLayout(this);
-        steps.setOrientation(LinearLayout.VERTICAL);
-        usage = new Step(1, "Allow Usage access",
-                "So Recents can see which apps you opened, and when. Find “Recents” in the list and turn it on.",
-                v -> openUsageAccess());
-        shortcut = new Step(2, "Turn on the Recents shortcut",
-                "Lets you hold Home to open Recents, and presses Force stop for you when you close an app. "
-                        + "Android will warn that it can see and control the screen: Recents only reads the "
-                        + "Settings screens it opens itself, and only when you ask it to close an app.",
+        shortcut = new Step(1, "Turn on Recents in Accessibility",
+                "Find “Recents: hold Home and Force stop” and switch it on. It lets you hold Home to open "
+                        + "Recents, keeps the list of apps you open, and presses Force stop for you when you close "
+                        + "one. Android will warn that it can see and control the screen: Recents only notes which "
+                        + "app is on screen, and only presses buttons in Settings screens it opens itself, when you "
+                        + "ask it to close an app.",
                 v -> openAccessibility());
-        steps.addView(usage.view);
-        steps.addView(shortcut.view);
-        col.addView(steps);
+        col.addView(shortcut.view);
 
-        TextView hint = text("After switching it on, press Back to return here.", 13, TEXT3);
+        hint = text("It comes back here by itself once it’s on. If it doesn’t, press Back.", 13, TEXT3);
         hint.setPadding(dp(4), dp(18), 0, 0);
         col.addView(hint);
-        hint.setTag("hint");
 
         // All set.
         done = new LinearLayout(this);
@@ -104,8 +88,6 @@ public class SetupActivity extends Activity {
         col.addView(done, dlp);
 
         setContentView(root);
-        ops = (AppOpsManager) getSystemService(APP_OPS_SERVICE);
-        ops.startWatchingMode(AppOpsManager.OPSTR_GET_USAGE_STATS, getPackageName(), onUsageChanged);
     }
 
     @Override protected void onResume() {
@@ -116,33 +98,16 @@ public class SetupActivity extends Activity {
 
     @Override protected void onDestroy() {
         waiting = false;
-        ops.stopWatchingMode(onUsageChanged);
         super.onDestroy();
     }
 
-    static boolean complete(Activity a) { return AppList.hasUsageAccess(a) && RecentsService.instance != null; }
-
     void refresh() {
-        boolean u = AppList.hasUsageAccess(this), s = RecentsService.instance != null;
-        usage.set(u);
-        shortcut.set(s);
-        boolean all = u && s;
+        boolean all = complete();
+        shortcut.set(all);
         done.setVisibility(all ? View.VISIBLE : View.GONE);
-        View hint = getWindow().getDecorView().findViewWithTag("hint");
-        if (hint != null) hint.setVisibility(all ? View.GONE : View.VISIBLE);
-        View target = all ? doneButton : !u ? usage.view : shortcut.view;
+        hint.setVisibility(all ? View.GONE : View.VISIBLE);
+        View target = all ? doneButton : shortcut.view;
         target.post(target::requestFocus);
-    }
-
-    /** Back on top: from Settings, once a switch is on. */
-    void comeBack() {
-        if (!waiting) return;
-        startActivity(new Intent(this, SetupActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));
-    }
-
-    void openUsageAccess() {
-        open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS));
     }
 
     void openAccessibility() {
@@ -154,15 +119,11 @@ public class SetupActivity extends Activity {
             i.setClassName(p, r.activityInfo.name);
             break;
         }
-        open(i);
-    }
-
-    void open(Intent i) {
         try { startActivity(i); }
-        catch (Exception e) { Toast.makeText(this, "Open this in Settings yourself: it isn’t reachable directly on this TV", Toast.LENGTH_LONG).show(); }
+        catch (Exception e) { Toast.makeText(this, "Open Settings › Accessibility yourself: it isn’t reachable directly on this TV", Toast.LENGTH_LONG).show(); }
     }
 
-    // ---------------------------------------------------------------- a step
+    // ---------------------------------------------------------------- the step
 
     final class Step {
         final LinearLayout view = new LinearLayout(SetupActivity.this);
@@ -176,9 +137,7 @@ public class SetupActivity extends Activity {
             view.setPadding(dp(22), dp(18), dp(22), dp(18));
             view.setFocusable(true);
             view.setClickable(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-            lp.bottomMargin = dp(12);
-            view.setLayoutParams(lp);
+            view.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
 
             num = text(String.valueOf(n), 15, WHITE);
             num.setTypeface(medium);
