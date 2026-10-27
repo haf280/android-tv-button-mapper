@@ -1,4 +1,9 @@
-# TV Recents
+# TV Recents: button mapper and recent-apps switcher for Android TV
+
+Remap your TV remote's buttons (the colour buttons, and on many remotes the app buttons such as
+Netflix or Prime Video) to open any app, show your recent apps, or close apps to free memory.
+For Android TV 8+ and Google TV. Tested on Sony BRAVIA and Haier; other TVs and boxes (TCL, Philips,
+Hisense, Xiaomi, Chromecast, Nvidia Shield) should work. No ads, no permissions, no internet.
 
 > **This fork adds a Buttons screen** to [nilava/tv-recents](https://github.com/nilava/tv-recents).
 > Open Recents and choose **Buttons** to give your remote's spare buttons a job: press the button,
