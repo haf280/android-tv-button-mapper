@@ -30,6 +30,7 @@ final class Panel {
         void open(AppList.Item it);
         void close(AppList.Item it);
         void closeAll(List<AppList.Item> items);
+        void buttons();
         void dismiss();
     }
 
@@ -122,8 +123,11 @@ final class Panel {
                 row.addView(card);
                 if (i == focus) first = card;
             }
-            row.addView(closeAll(keep, v -> a.closeAll(items)));
+            row.addView(pill("✕   Close all", keep != null ? "Keeps " + keep + " open" : "Frees memory", v -> a.closeAll(items)));
         }
+        View buttons = pill("Buttons", "Remote shortcuts", v -> a.buttons());
+        row.addView(buttons);
+        if (first == null) first = buttons;
 
         // Keys.
         LinearLayout keys = new LinearLayout(c);
@@ -210,20 +214,20 @@ final class Panel {
     }
 
     /** A pill, so it reads as an action rather than an app. Sits level with the middle of the banners. */
-    View closeAll(String keep, View.OnClickListener l) {
+    View pill(String label, String subText, View.OnClickListener l) {
         LinearLayout box = new LinearLayout(c);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
-        box.setPadding(0, dp(32), 0, 0);
+        box.setPadding(0, dp(32), dp(18), 0);
 
-        final TextView b = text("✕   Close all", 15, WHITE);
+        final TextView b = text(label, 15, WHITE);
         b.setTypeface(medium);
         b.setGravity(Gravity.CENTER);
         b.setFocusable(true);
         b.setClickable(true);
         b.setPadding(dp(24), 0, dp(24), 0);
         box.addView(b, new LinearLayout.LayoutParams(-2, dp(48)));
-        final TextView sub = text(keep != null ? "Keeps " + keep + " open" : "Frees memory", 12, TEXT3);
+        final TextView sub = text(subText, 12, TEXT3);
         sub.setPadding(0, dp(10), 0, 0);
         box.addView(sub);
 

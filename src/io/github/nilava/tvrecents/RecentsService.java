@@ -23,6 +23,8 @@ import java.util.Set;
 
 /**
  * - Hold Home (half a second) shows the switcher over whatever is on screen. A short press still goes Home.
+ * - Remapped remote buttons (set on the Buttons screen, see Buttons) open an app, the switcher, Home,
+ *   Back or Close all.
  * - Closing an app: opens its App info, presses "Force stop", then "OK", behind a cover screen.
  *   It only touches Settings screens it opened itself, and gives up on an app after a few seconds.
  * - Keeps track of the app on screen, so the switcher can mark it and you come back to it after closing others.
@@ -83,12 +85,36 @@ public class RecentsService extends AccessibilityService {
         if (panel != null) dismissPanel(); else showPanel(null);
     };
 
+    /** Does what a remapped button is set to do. */
+    void run(String action) {
+        switch (action) {
+            case Buttons.RECENTS: if (panel != null) dismissPanel(); else showPanel(null); return;
+            case Buttons.HOME: hidePanel(); performGlobalAction(GLOBAL_ACTION_HOME); return;
+            case Buttons.BACK: performGlobalAction(GLOBAL_ACTION_BACK); return;
+            case Buttons.CLOSE_ALL: actions.closeAll(AppList.load(this, 12)); return;
+        }
+        if (action.startsWith(Buttons.APP)) openApp(action.substring(Buttons.APP.length()));
+    }
+
+    void openApp(String pkg) {
+        Intent i = AppList.launchIntent(getPackageManager(), pkg);
+        if (i == null) return; // not installed
+        hidePanel();
+        startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
     @Override protected boolean onKeyEvent(KeyEvent e) {
         if (busy()) {                                    // closing apps: keep the remote off Settings
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_UP) queue.clear();
             return true;
         }
-        if (e.getKeyCode() != KeyEvent.KEYCODE_HOME) return false;
+        int key = e.getKeyCode();
+        String action = ButtonsActivity.listening ? null : Buttons.get(this, key); // the Buttons screen sees every press
+        if (action != null) {
+            if (e.getAction() == KeyEvent.ACTION_UP) run(action); // on release, so holding doesn't repeat
+            return true;
+        }
+        if (key != KeyEvent.KEYCODE_HOME) return false;
         if (e.getAction() == KeyEvent.ACTION_DOWN) {
             if (!homeHeld) {
                 homeHeld = true;
@@ -144,6 +170,10 @@ public class RecentsService extends AccessibilityService {
             List<String> pkgs = AppList.closeAllTargets(RecentsService.this, items);
             pkgs.remove(foreground); // never the app you're in
             closeApps(pkgs, null);
+        }
+        @Override public void buttons() {
+            hidePanel();
+            startActivity(new Intent(RecentsService.this, ButtonsActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
         @Override public void dismiss() { dismissPanel(); }
     };
@@ -215,8 +245,7 @@ public class RecentsService extends AccessibilityService {
         AppList.markClosed(this, done);
         // Back to where you were: the app you were watching, or the home screen.
         if (returnTo != null) {
-            Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(returnTo);
-            if (i == null) i = getPackageManager().getLaunchIntentForPackage(returnTo);
+            Intent i = AppList.launchIntent(getPackageManager(), returnTo);
             if (i != null) startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
             else performGlobalAction(GLOBAL_ACTION_HOME);
         } else {

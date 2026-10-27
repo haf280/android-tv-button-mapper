@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="service_label">Recents: hold Home and Force stop</string>
-    <string name="service_desc">Hold Home on the remote to open Recents. When you close an app in Recents, this presses Force stop and OK in that app\'s App info for you. It does nothing else.</string>
+    <string name="service_desc">Hold Home or press the blue button to open Recents. Spare remote buttons do what you set on the Buttons screen in Recents: open an app, Recents, Home, Back or Close all. When you close an app in Recents, this presses Force stop and OK in that app\'s App info for you. It does nothing else.</string>
 </resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The TV home screen tile: three recent-app cards, the middle one in focus, over a memory bar. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp" android:height="180dp" android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#FF16161A" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#33FFFFFF"
+        android:pathData="M28,58h66a10,10 0,0 1,10 10v44a10,10 0,0 1,-10 10h-66a10,10 0,0 1,-10 -10v-44a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#33FFFFFF"
+        android:pathData="M226,58h66a10,10 0,0 1,10 10v44a10,10 0,0 1,-10 10h-66a10,10 0,0 1,-10 -10v-44a10,10 0,0 1,10 -10z" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M124,48h72a12,12 0,0 1,12 12v48a12,12 0,0 1,-12 12h-72a12,12 0,0 1,-12 -12v-48a12,12 0,0 1,12 -12z" />
+    <path android:fillColor="#29FFFFFF" android:pathData="M18,146h284v4h-284z" />
+    <path android:fillColor="#D9FFFFFF" android:pathData="M18,146h170v4h-170z" />
+</vector>

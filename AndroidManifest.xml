@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.nilava.tvrecents" android:versionCode="3" android:versionName="1.0.0">
+    package="io.github.haf280.tvrecents" android:versionCode="4" android:versionName="1.1.0">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
     <!-- Android 11+ only shows apps that are asked for: TV apps, normal apps and home screens. -->
     <queries>
@@ -19,10 +19,10 @@
     </queries>
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-    <application android:label="Recents" android:allowBackup="false"
+    <application android:label="Recents" android:allowBackup="false" android:banner="@drawable/banner"
         android:icon="@android:drawable/ic_menu_recent_history"
         android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
-        <activity android:name=".MainActivity"
+        <activity android:name="io.github.nilava.tvrecents.MainActivity"
             android:exported="true"
             android:launchMode="singleTask" android:noHistory="true"
             android:excludeFromRecents="true"
@@ -36,12 +36,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SetupActivity"
+        <activity android:name="io.github.nilava.tvrecents.SetupActivity"
+            android:exported="false" android:launchMode="singleTask"
+            android:excludeFromRecents="true" android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+        <activity android:name="io.github.nilava.tvrecents.ButtonsActivity"
             android:exported="false" android:launchMode="singleTask"
             android:excludeFromRecents="true" android:screenOrientation="landscape"
             android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
         <!-- Optional. You turn it on in Settings > Accessibility. -->
-        <service android:name=".RecentsService" android:label="@string/service_label"
+        <service android:name="io.github.nilava.tvrecents.RecentsService" android:label="@string/service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

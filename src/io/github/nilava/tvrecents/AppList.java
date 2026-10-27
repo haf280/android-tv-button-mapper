@@ -32,6 +32,12 @@ final class AppList {
     static final String PREFS = "recents";
     static final int KEEP = 30;
 
+    /** How to open an app: its TV entry first, then the phone one. Null if it can't be opened. */
+    static Intent launchIntent(PackageManager pm, String pkg) {
+        Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
+        return i != null ? i : pm.getLaunchIntentForPackage(pkg);
+    }
+
     static Set<String> homes(PackageManager pm) {
         Set<String> s = new HashSet<>();
         for (ResolveInfo r : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0))
@@ -83,8 +89,7 @@ final class AppList {
             Item it = new Item();
             it.pkg = pkg;
             it.used = now - (up - t);
-            it.launch = pm.getLeanbackLaunchIntentForPackage(pkg);
-            if (it.launch == null) it.launch = pm.getLaunchIntentForPackage(pkg);
+            it.launch = launchIntent(pm, pkg);
             if (it.launch == null) continue; // uninstalled, or not something you can open
             try {
                 it.label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0));
