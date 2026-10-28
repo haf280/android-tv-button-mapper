@@ -1,4 +1,4 @@
-package io.github.nilava.tvrecents;
+package io.github.haf280.tvrecents;
 
 import android.content.Context;
 import android.content.SharedPreferences;

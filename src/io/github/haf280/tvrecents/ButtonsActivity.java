@@ -1,4 +1,4 @@
-package io.github.nilava.tvrecents;
+package io.github.haf280.tvrecents;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -25,8 +25,12 @@ import java.util.Map;
  * Opened from the Buttons pill in Recents. Changes work at once; they're kept on the TV.
  */
 public class ButtonsActivity extends Activity {
-    /** While on, the service lets every press through, so this screen can see which button it was. */
+    /**
+     * While on, the service hands this screen the next spare button it sees. It has to: some buttons
+     * (Sony's app buttons, for one) are taken by the TV before any screen gets them.
+     */
     static volatile boolean listening;
+    static ButtonsActivity shown; // this screen while it's on top
 
     static final int BG = 0xFF0B0B0D, ROW = 0xFF17171B, ROW_FOCUS = 0xFF24242A, WHITE = 0xFFFFFFFF,
             TEXT2 = 0xB3FFFFFF, TEXT3 = 0x80FFFFFF;
@@ -65,9 +69,22 @@ public class ButtonsActivity extends Activity {
         showButtons();
     }
 
+    @Override protected void onResume() {
+        super.onResume();
+        shown = this;
+    }
+
     @Override protected void onPause() {
-        listening = false; // never leave the remote passing everything through
+        listening = false; // never leave the service handing buttons to a screen that's gone
+        shown = null;
         super.onPause();
+    }
+
+    /** The service caught the button. */
+    void captured(int key) {
+        if (!listening) return;
+        listening = false;
+        pick(key);
     }
 
     // ---------------------------------------------------------------- the three steps

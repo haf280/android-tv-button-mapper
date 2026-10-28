@@ -1,6 +1,7 @@
-package io.github.nilava.tvrecents;
+package io.github.haf280.tvrecents;
 
 import android.accessibilityservice.AccessibilityService;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.net.Uri;
@@ -25,8 +26,10 @@ import java.util.Set;
  * - Hold Home (half a second) shows the switcher over whatever is on screen. A short press still goes Home.
  * - Remapped remote buttons (set on the Buttons screen, see Buttons) open an app, the switcher, Home,
  *   Back or Close all.
- * - Closing an app: opens its App info, presses "Force stop", then "OK", behind a cover screen.
- *   It only touches Settings screens it opened itself, and gives up on an app after a few seconds.
+ * - Closing an app: opens its App info, presses "Force stop", then "OK", behind a cover screen, finding
+ *   both by the Settings app's own words in the TV's language. It only touches Settings screens it
+ *   opened itself, and gives up on an app after a few seconds. (Android's killBackgroundProcesses is
+ *   no use here: Android 14 limits it to your own app, and some TVs, Sony's among them, refuse it.)
  * - Keeps track of the app on screen, so the switcher can mark it and you come back to it after closing others.
  */
 public class RecentsService extends AccessibilityService {
@@ -109,7 +112,14 @@ public class RecentsService extends AccessibilityService {
             return true;
         }
         int key = e.getKeyCode();
-        String action = ButtonsActivity.listening ? null : Buttons.get(this, key); // the Buttons screen sees every press
+        if (ButtonsActivity.listening) {
+            // Hand the Buttons screen the button itself: some (Sony's app buttons) never reach a screen.
+            final ButtonsActivity screen = ButtonsActivity.shown;
+            if (screen == null || !Buttons.allowed(key)) return false; // Back and the like: the screen handles those
+            if (e.getAction() == KeyEvent.ACTION_UP) h.post(() -> screen.captured(key));
+            return true;
+        }
+        String action = Buttons.get(this, key);
         if (action != null) {
             if (e.getAction() == KeyEvent.ACTION_UP) run(action); // on release, so holding doesn't repeat
             return true;
@@ -204,7 +214,45 @@ public class RecentsService extends AccessibilityService {
         next();
     }
 
+    /** "Closed Stremio  ·  freed 120 MB", when 10 MB or more came back. */
+    String withFreed(String what, long before) {
+        long freed = Math.max(0, AppList.memory(this).availMem - before);
+        return freed >= 10L * 1024 * 1024 ? what + "  ·  freed " + AppList.size(freed) : what;
+    }
+
+    /** The Settings app's own words for a button, in the TV's language, or null. */
+    String settingsText(String name) {
+        try {
+            Context s = createPackageContext(SETTINGS, 0);
+            int id = s.getResources().getIdentifier(name, "string", SETTINGS);
+            return id != 0 ? s.getString(id) : null;
+        } catch (Exception x) { return null; }
+    }
+
+    String forceStop;      // the "Force stop" label, read once
+    List<String> oks;      // every way this Settings app may say "OK"
+
+    void readLabels() {
+        if (forceStop != null) return;
+        String fs = settingsText("device_apps_app_management_force_stop");
+        forceStop = fs != null ? fs : "Force stop";
+        oks = new ArrayList<>();
+        for (String n : new String[] {"okay", "settings_ok", "title_ok"}) {
+            String t = settingsText(n);
+            if (t != null && !oks.contains(t)) oks.add(t);
+        }
+        String ok = getString(android.R.string.ok);
+        if (!oks.contains(ok)) oks.add(ok);
+        if (!oks.contains("OK")) oks.add("OK");
+    }
+
+    AccessibilityNodeInfo findOk(AccessibilityNodeInfo root) {
+        for (String t : oks) { AccessibilityNodeInfo n = find(root, t); if (n != null) return n; }
+        return null;
+    }
+
     void next() {
+        readLabels();
         current = queue.poll();
         if (current == null) { finishClosing(); return; }
         step = 1;
@@ -224,7 +272,7 @@ public class RecentsService extends AccessibilityService {
             if (root != null && SETTINGS.contentEquals(String.valueOf(root.getPackageName()))) {
                 if (step == 1 && hasText(root, current)) {           // App info for the right app
                     if (pageSeen == 0) pageSeen = SystemClock.uptimeMillis();
-                    AccessibilityNodeInfo fs = find(root, "Force stop");
+                    AccessibilityNodeInfo fs = find(root, forceStop);
                     if (fs != null) {
                         if (!fs.isEnabled()) { done.add(current); next(); return; } // not running
                         if (click(fs)) { step = 2; stepStarted = SystemClock.uptimeMillis(); }
@@ -232,7 +280,7 @@ public class RecentsService extends AccessibilityService {
                         done.add(current); next(); return;             // no Force stop shown: not running
                     }
                 } else if (step == 2) {                                // the "Force stop?" prompt
-                    AccessibilityNodeInfo ok = find(root, "OK");
+                    AccessibilityNodeInfo ok = findOk(root);
                     if (ok != null && click(ok)) { done.add(current); stopped++; next(); return; }
                 }
             }
@@ -254,11 +302,10 @@ public class RecentsService extends AccessibilityService {
         foreground = returnTo;
         h.postDelayed(() -> {
             hideCover();
-            long freed = Math.max(0, AppList.memory(this).availMem - memBefore);
             String what = singleLabel != null ? "Closed " + singleLabel
                     : stopped == 0 ? "Nothing else was running"
                     : "Closed " + stopped + (stopped == 1 ? " app" : " apps");
-            showPanel(freed >= 10L * 1024 * 1024 ? what + "  ·  freed " + AppList.size(freed) : what);
+            showPanel(withFreed(what, memBefore));
         }, 900);
     }
 
