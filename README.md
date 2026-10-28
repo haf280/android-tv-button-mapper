@@ -112,6 +112,13 @@ sh docker/build.sh   # same output, out/tv-recents.apk
 The first build creates a signing key, `key.jks`. Keep it and back it up: updates must be signed with
 the same key. It's in `.gitignore`, so it's never committed.
 
+The key's default password is in `build.sh`, so change it before you publish builds:
+
+```sh
+keytool -storepasswd -keystore key.jks -storepass tvrecents   # asks for the new password
+KEYSTORE_PASS='your-new-password' sh docker/build.sh          # or sh build.sh
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
